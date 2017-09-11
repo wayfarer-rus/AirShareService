@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AirShare Companion</string>
+    <string name="local_controls_button_clear_all">Clear All</string>
+    <string name="local_controls_button_select_all">Select All</string>
+    <string name="local_controls_button_upload">Upload</string>
+    <string name="action_settings">Settings</string>
+    <string name="main_ip_address_hint">127.0.0.1</string>
+    <string name="main_connect_button">Connect</string>
+    <string name="main_text_header">Enter IP address of the server</string>
+    <string name="remote_controls_button_download">Download</string>
+</resources>

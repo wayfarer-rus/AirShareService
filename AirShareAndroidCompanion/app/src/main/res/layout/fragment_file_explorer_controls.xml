@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="?android:attr/buttonBarStyle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:elevation="24dp"
+    android:orientation="horizontal"
+    android:theme="@android:style/ButtonBar">
+
+    <Button
+        android:id="@+id/selectAll"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:background="#33b5e5"
+        android:text="@string/local_controls_button_select_all"
+        android:textAlignment="center"
+        android:textColor="@android:color/black"
+        android:textStyle="bold"
+        android:theme="@android:style/Widget.ActionButton" />
+
+    <Button
+        android:id="@+id/unselectAll"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:background="#33b5e5"
+        android:text="@string/local_controls_button_clear_all"
+        android:textAlignment="center"
+        android:textColor="@android:color/black"
+        android:textStyle="bold"
+        android:theme="@android:style/Widget.ActionButton" />
+
+    <Button
+        android:id="@+id/sendToRemote"
+        style="?android:attr/buttonBarButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="4dp"
+        android:layout_marginStart="4dp"
+        android:layout_weight="1"
+        android:background="#33b5e5"
+        android:text="@string/local_controls_button_upload"
+        android:textAlignment="center"
+        android:textColor="@android:color/black"
+        android:textStyle="bold"
+        android:theme="@android:style/Widget.ActionButton" />
+</LinearLayout>
