@@ -24,7 +24,9 @@ internal class FileExplorerState private constructor() : Serializable {
     var remotePath = "/"
     private val remoteHistory = Stack<String>()
 
-    var path = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString() + "")
+    var path = File(Environment.getExternalStorageDirectory().toString()
+//            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).toString()
+            + "")
     // Check if the first level of the directory structure is the one showing
     private var firstLvl: Boolean? = true
 
