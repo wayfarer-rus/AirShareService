@@ -14,19 +14,3 @@ class AirShareFile (private val fileName: String, private val data: ByteArray) {
         return res
     }
 }
-
-//private fun File.fillWith(data: JSONArray): File? {
-//    val buff = data.toByteArray()
-//    this.writeBytes(buff)
-//    return this
-//}
-
-//private fun JSONArray.toByteArray(): ByteArray {
-//    val buff = ByteArray(this.length())
-//
-//    for (i in buff.indices) {
-//        buff[i] = (this[i] as Int).toByte()
-//    }
-//
-//    return buff
-//}

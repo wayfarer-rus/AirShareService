@@ -87,7 +87,7 @@ http.createServer(function (req, res) {
                     res.writeHeader(200,
                         {"Content-Length":stats.size, 
                         "Content-Type": "file",
-                        "File-Name" : pathModule.basename(path)
+                        "File-Name" : encodeURI(pathModule.basename(path))
                     });
 
                     var fReadStream = fs.createReadStream(path);
@@ -107,8 +107,8 @@ http.createServer(function (req, res) {
                             res.writeHeader(200, 
                                 {"Content-Type" : "folder",
                                 "Content-Length" : zipFileStat.size,
-                                "File-Name" : pathModule.basename(zipTmpFile),
-                                "Folder-Name" : pathModule.basename(path)
+                                "File-Name" : encodeURI(pathModule.basename(zipTmpFile)),
+                                "Folder-Name" : encodeURI(pathModule.basename(path))
                             });
 
                             fReadStream.pipe(res).on('finish', function() { deleteZipTmp(zipTmpFile);} );

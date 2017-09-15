@@ -11,13 +11,14 @@ import android.view.ViewGroup
 import android.widget.Button
 import khttp.extensions.fileLike
 import khttp.responses.Response
+import org.airshare.companion.AirShareFile
+import org.airshare.companion.ZipFileUtil
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.support.v4.toast
 import org.jetbrains.anko.uiThread
-import org.json.JSONArray
 import org.json.JSONException
-import org.json.JSONObject
 import java.io.File
+import java.net.URLDecoder
 import kotlin.collections.set
 
 /**
@@ -103,14 +104,14 @@ class FileExplorerControlsFragment : Fragment() {
 
     private fun download(selectedItems: List<Item>, fragment: RemoteFileExplorerFragment) {
         val state = FileExplorerState.instance
-        fragment.showProgressBar()
+        fragment.showProgressBar(selectedItems.size)
         val cacheDir = context.cacheDir
 
         doAsync {
             selectedItems
                     .map { (state.remotePath + "/" + it.file).replace("//+".toRegex(), "/") }
-                    .forEach {
-                        val r = khttp.get(state.remoteUrlForDownload!!, params = mapOf("path" to it))
+                    .forEachIndexed { i, s ->
+                        val r = khttp.get(state.remoteUrlForDownload!!, params = mapOf("path" to s))
 
                         if (failResponse(r)) {
                             uiThread {
@@ -121,7 +122,11 @@ class FileExplorerControlsFragment : Fragment() {
                             return@doAsync
                         }
                         else {
-                            saveTo(state.path.toString(), r.headers, r.content, cacheDir)
+                            saveTo(state.path.toString(), r.headers, r.content, cacheDir.toString())
+                        }
+
+                        uiThread {
+                            fragment.updateProgress(i + 1, selectedItems.size)
                         }
                     }
 
@@ -146,63 +151,27 @@ class FileExplorerControlsFragment : Fragment() {
     private fun saveTo(path: String, headers: Map<String, String>, content: ByteArray, cacheDir: String) {
         when (headers["Content-Type"]) {
             "file" -> {
-                val file = AirShareFile(headers["File-Name"]!!, content)
+                val file = AirShareFile(URLDecoder.decode(headers["File-Name"]!!, "UTF-8"), content)
                 file.writeTo(path)
             }
             "folder" -> {
-
-                val zipFile = AirShareFile(headers["File-Name"]!!, content)
+                val zipFile = AirShareFile(URLDecoder.decode(headers["File-Name"]!!, "UTF-8"), content)
                 val f = zipFile.writeTo(cacheDir + "/")
-                ZipFileUtil.unzip(f!!, path + "/" + headers["Folder-Name"])
+                ZipFileUtil.unzip(f!!, path + "/" + URLDecoder.decode(headers["Folder-Name"], "UTF-8"))
                 f.delete()
             }
         }
-/*
-        val iter = json.keys()
-
-        while (iter.hasNext()) {
-            val key = iter.next()
-
-            when (key) {
-                "file" -> {
-                    val fileName = json.getJSONObject("file").getString("path")
-                    val fileData = json.getJSONObject("file").getJSONObject("data").getJSONArray("data")
-                    val file = AirShareFile(fileName, fileData)
-                    file.toFile(path)
-
-                }
-                "folder" -> {
-                    val folder = json.getJSONObject("folder")
-                    val folderPath = folder.getString("path")
-                    val newPath = path + "/" + folderPath
-
-                    if (folder.has("folders")) {
-                        saveToLoop(newPath, folder.getJSONArray("folders"))
-                    }
-
-                    if (folder.has("files")) {
-                        saveToLoop(newPath, folder.getJSONArray("files"))
-                    }
-                }
-            }
-        }*/
-    }
-
-    @Throws(JSONException::class)
-    private fun saveToLoop(path: String, jsonArray: JSONArray) {
-        for (i in 0 until jsonArray.length())
-            saveTo(path, jsonArray.getJSONObject(i))
     }
 
     private fun upload(selectedItems: List<Item>, fragment: LocalFileExplorerFragment) {
         val state = FileExplorerState.instance
-        fragment.showProgressBar()
+        fragment.showProgressBar(selectedItems.size)
         val cacheDir = context.cacheDir
 
         doAsync {
             var sleepForUnzipTime = 0L
 
-            for (item in selectedItems) {
+            for ((i, item) in selectedItems.withIndex()) {
                 val wherePath = state.remotePath.replace("//+".toRegex(), "/")
                 val whatPath = state.path.toString() + "/" + item.file
                 val params = mutableMapOf("path" to wherePath)
@@ -231,6 +200,9 @@ class FileExplorerControlsFragment : Fragment() {
                     return@doAsync
                 }
 
+                uiThread {
+                    fragment.updateProgress(i + 1, selectedItems.size)
+                }
             }
 
             Thread.sleep(sleepForUnzipTime)

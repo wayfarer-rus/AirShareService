@@ -15,34 +15,6 @@ public class LocalFileExplorerFragment extends FileExplorerFragment
     private static final String TAG = "LFExplorer_Fragment";
 
     @Override
-    public boolean onSingleTapConfirmed(MotionEvent motionEvent) {
-        Log.d(TAG, "Single tap confirmed");
-        int position = getListView().pointToPosition((int) motionEvent.getX(), (int) motionEvent.getY());
-        Item chosenFile = (Item) getListView().getItemAtPosition(position);
-        View v = getListView().getChildAt(position - getListView().getFirstVisiblePosition());
-
-        if (chosenFile == null || v == null) {
-            return false;
-        }
-
-        // get current state
-        FileExplorerState state = FileExplorerState.Companion.getInstance();
-        File sel = new File(state.getPath() + "/" + chosenFile);
-
-        if (chosenFile.getFile().equalsIgnoreCase("up") && !sel.exists()) {
-            return false;
-        }
-        else if (chosenFile.isSelected()) {
-            setSelection(chosenFile, v, false);
-        }
-        else {
-            setSelection(chosenFile, v, true);
-        }
-
-        return true;
-    }
-
-    @Override
     public boolean onDoubleTap(MotionEvent motionEvent) {
         Log.d(TAG, "Double tap");
 
@@ -83,7 +55,6 @@ public class LocalFileExplorerFragment extends FileExplorerFragment
             }
 
             parentActivity.loadLocalFileList();
-
             Log.d(TAG, state.getPath().getAbsolutePath());
         }
 

@@ -229,6 +229,10 @@ public class AirShareActivity extends FragmentActivity
             Log.e(TAG, "path does not exist");
         }
 
+        createLocalAdapter();
+    }
+
+    private void createLocalAdapter() {
         ListAdapter adapter = new ArrayAdapter<Item>(this,
                 android.R.layout.select_dialog_item, android.R.id.text1,
                 localFileList)

@@ -61,11 +61,12 @@ public class FileExplorerPagerAdapter extends FragmentPagerAdapter {
     @Override
     public CharSequence getPageTitle(int position) {
         String title = "";
+        FileExplorerState state = FileExplorerState.Companion.getInstance();
 
         switch (position) {
-            case 0: title = "Local files";
+            case 0: title = "Local: " + state.getPath().toString();
                 break;
-            case 1: title = "Remote files";
+            case 1: title = "Remote: " + state.getRemotePath();
                 break;
         }
 
@@ -80,21 +81,4 @@ public class FileExplorerPagerAdapter extends FragmentPagerAdapter {
         return mRemoteTouchDetector;
     }
 
-    /**
-     * A dummy fragment representing a section of the app, but that simply displays dummy text.
-     */
-    public static class DemoObjectFragment extends Fragment {
-
-        public static final String ARG_OBJECT = "object";
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_collection_object, container, false);
-            Bundle args = getArguments();
-            ((TextView) rootView.findViewById(android.R.id.text1)).setText(
-                    Integer.toString(args.getInt(ARG_OBJECT)));
-            return rootView;
-        }
-    }
 }

@@ -10,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.TextView;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -24,6 +25,7 @@ abstract class FileExplorerFragment extends ListFragment
 
     protected AirShareActivity parentActivity;
     private View progressOverlay;
+    private TextView progressText;
 
     public void setParentActivity(AirShareActivity parentActivity) {
         this.parentActivity = parentActivity;
@@ -38,16 +40,38 @@ abstract class FileExplorerFragment extends ListFragment
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_file_explorer, container, false);
         progressOverlay = v.findViewById(R.id.progress_overlay);
+        progressText = v.findViewById(R.id.progressBarText);
         return v;
     }
 
     @Override
-    public abstract boolean onSingleTapConfirmed(MotionEvent motionEvent);
+    public boolean onSingleTapConfirmed(MotionEvent motionEvent) {
+        Log.d(TAG, "Single tap confirmed");
+        int position = getListView().pointToPosition((int) motionEvent.getX(), (int) motionEvent.getY());
+        Item chosenFile = (Item) getListView().getItemAtPosition(position);
+        View v = getListView().getChildAt(position - getListView().getFirstVisiblePosition());
+
+        if (chosenFile == null || v == null) {
+            return false;
+        }
+
+        if (chosenFile.getType().equals(Item.Type.UP)) {
+            return false;
+        }
+        else if (chosenFile.isSelected()) {
+            setSelection(chosenFile, v, false);
+        }
+        else {
+            setSelection(chosenFile, v, true);
+        }
+
+        return true;
+    }
 
     @Override
     public abstract boolean onDoubleTap(MotionEvent motionEvent);
 
-    protected void setSelection(Item chosenFile, View v, boolean selection) {
+    private void setSelection(Item chosenFile, View v, boolean selection) {
         chosenFile.setSelected(selection);
         v.setSelected(selection);
         int c = ResourcesCompat.getColor(getResources(),
@@ -62,8 +86,9 @@ abstract class FileExplorerFragment extends ListFragment
         return true;
     }
 
-    public void showProgressBar() {
+    public void showProgressBar(int amountOfSelectedFiles) {
         Log.d(TAG, "showProgressBar!!!");
+        progressText.setText("0/"+amountOfSelectedFiles);
         MainActivity.animateView(progressOverlay, View.VISIBLE, 0.4f, 200);
         getActivity().getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
@@ -75,4 +100,7 @@ abstract class FileExplorerFragment extends ListFragment
         getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
     }
 
+    public void updateProgress(int amountOfProcessedFiles, int amountOfSelectedFiles) {
+        progressText.setText(amountOfProcessedFiles + "/" + amountOfSelectedFiles);
+    }
 }

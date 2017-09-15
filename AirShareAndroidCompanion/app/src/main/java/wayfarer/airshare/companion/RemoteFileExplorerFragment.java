@@ -12,30 +12,6 @@ public class RemoteFileExplorerFragment extends FileExplorerFragment {
     private static final String TAG = "RFExplorer_Fragment";
 
     @Override
-    public boolean onSingleTapConfirmed(MotionEvent motionEvent) {
-        Log.d(TAG, "Single tap confirmed");
-        int position = getListView().pointToPosition((int) motionEvent.getX(), (int) motionEvent.getY());
-        Item chosenFile = (Item) getListView().getItemAtPosition(position);
-        View v = getListView().getChildAt(position - getListView().getFirstVisiblePosition());
-
-        if (chosenFile == null || v == null) {
-            return false;
-        }
-
-        if (chosenFile.getType().equals(Item.Type.UP)) {
-            return false;
-        }
-        else if (chosenFile.isSelected()) {
-            setSelection(chosenFile, v, false);
-        }
-        else {
-            setSelection(chosenFile, v, true);
-        }
-
-        return true;
-    }
-
-    @Override
     public boolean onDoubleTap(MotionEvent motionEvent) {
         int position = getListView().pointToPosition((int) motionEvent.getX(), (int) motionEvent.getY());
         Item chosenFile = (Item) getListView().getItemAtPosition(position);
