@@ -63,9 +63,7 @@ fun uploadFiles(cmd: List<String>) {
         f = File("./tmp/_data.zip")
         params["unzip"] = "true"
         // zip it to file
-        val before = System.nanoTime()
         ZipFileUtil.zipDirectory(File(whatPath), f)
-        val after = System.nanoTime()
     }
     else {
         f = File(whatPath)
@@ -112,39 +110,6 @@ private fun saveTo(path: String, headers: Map<String, String>, content: ByteArra
     }
 }
 
-/*private fun saveTo(path: String, json: JSONObject) {
-    for (key in json.keys()) {
-        when (key) {
-            "file" -> {
-//                val file = AirShareFile((json["file"] as JSONObject )["path"] as String,
-//                        ((json["file"] as JSONObject)["data"] as JSONObject)["data"] as JSONArray)
-//                file.writeTo(path)
-            }
-            "folder" -> {
-                val folderPath = (json[key] as JSONObject)["path"]
-                val newPath = path + "/" + folderPath
-                File(newPath).mkdirs()
-
-                if ((json[key] as JSONObject).has("folders")) {
-                    val folders = (json[key] as JSONObject)["folders"] as JSONArray
-                    saveToLoop(folders, newPath)
-                }
-
-                if ((json[key] as JSONObject).has("files")) {
-                    val files = (json[key] as JSONObject)["files"] as JSONArray
-                    saveToLoop(files, newPath)
-                }
-            }
-        }
-    }
-}
-
-private fun saveToLoop(jsonArray: JSONArray, path: String) {
-    for (item in jsonArray) {
-        saveTo(path, item as JSONObject)
-    }
-}*/
-
 fun changeRemoteDirectory(cmd: List<String>) {
     when {
         cmd[1] == ".."      -> path = path.dropLastWhile { it != '/' }
@@ -187,10 +152,3 @@ private fun failResponse(r: Response): Boolean {
     }
     return false
 }
-
-//println(get("http://127.0.0.1:8080").jsonObject.toString(4))
-
-//    var files = listOf(File("/Users/wayfarer/tmp/hifriends.zip").fileLike())
-//    var r = post("http://127.0.0.1:8080/__upload__", files = files)
-
-//    println(r.toString())

@@ -104,6 +104,7 @@ class FileExplorerControlsFragment : Fragment() {
     private fun download(selectedItems: List<Item>, fragment: RemoteFileExplorerFragment) {
         val state = FileExplorerState.instance
         fragment.showProgressBar()
+        val cacheDir = context.cacheDir
 
         doAsync {
             selectedItems
@@ -120,7 +121,7 @@ class FileExplorerControlsFragment : Fragment() {
                             return@doAsync
                         }
                         else {
-                            saveTo(state.path.toString(), r.jsonObject)
+                            saveTo(state.path.toString(), r.headers, r.content, cacheDir)
                         }
                     }
 
@@ -142,7 +143,21 @@ class FileExplorerControlsFragment : Fragment() {
     }
 
     @Throws(JSONException::class)
-    private fun saveTo(path: String, json: JSONObject) {
+    private fun saveTo(path: String, headers: Map<String, String>, content: ByteArray, cacheDir: String) {
+        when (headers["Content-Type"]) {
+            "file" -> {
+                val file = AirShareFile(headers["File-Name"]!!, content)
+                file.writeTo(path)
+            }
+            "folder" -> {
+
+                val zipFile = AirShareFile(headers["File-Name"]!!, content)
+                val f = zipFile.writeTo(cacheDir + "/")
+                ZipFileUtil.unzip(f!!, path + "/" + headers["Folder-Name"])
+                f.delete()
+            }
+        }
+/*
         val iter = json.keys()
 
         while (iter.hasNext()) {
@@ -170,7 +185,7 @@ class FileExplorerControlsFragment : Fragment() {
                     }
                 }
             }
-        }
+        }*/
     }
 
     @Throws(JSONException::class)

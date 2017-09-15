@@ -10,11 +10,6 @@ var pathModule = require('path');
 var formidable = require('formidable');
 var unzipModule = require('unzip-stream');
 var zipFolder = require('zip-folder');
-//var events = require('events');
-//var eventEmitter = new events.EventEmitter();
-
-//Assign the event handler to an event:
-//eventEmitter.on('close', deleteZipTmp);
 
 var rootFolder = "/Users/wayfarer";
 var tmpZipFolder = "/Users/wayfarer/tmp/";
@@ -42,6 +37,7 @@ http.createServer(function (req, res) {
 
                 if (wherePath[0] != '/') wherePath = '/'+wherePath;
                 if (wherePath[wherePath.length-1]) wherePath += '/';
+
                 var unzip = q.query.unzip;
 
                 for (var key in files) {
@@ -72,9 +68,6 @@ http.createServer(function (req, res) {
                 res.writeHead(200);
                 res.write('File uploaded and moved!');
                 res.end();
-                //console.log(files.filetoupload.path);
-                //console.log(files.filetoupload.name);
-                //console.log(JSON.stringify(files));
             }
         });
     }
@@ -96,6 +89,7 @@ http.createServer(function (req, res) {
                         "Content-Type": "file",
                         "File-Name" : pathModule.basename(path)
                     });
+
                     var fReadStream = fs.createReadStream(path);
                     fReadStream.pipe(res);
                 } else if (stats.isDirectory()) {
@@ -108,28 +102,21 @@ http.createServer(function (req, res) {
                             res.end();
                         } else {
                             var fReadStream = fs.createReadStream(zipTmpFile);
+                            var zipFileStat = fs.statSync(zipTmpFile)
+
                             res.writeHeader(200, 
                                 {"Content-Type" : "folder",
+                                "Content-Length" : zipFileStat.size,
                                 "File-Name" : pathModule.basename(zipTmpFile),
                                 "Folder-Name" : pathModule.basename(path)
                             });
+
                             fReadStream.pipe(res).on('finish', function() { deleteZipTmp(zipTmpFile);} );
                         }
                     });
                 }
             }
         });
-
-        /*download(path, function(err, data) {
-            if (err) {
-                res.writeHead(500);
-                res.end(JSON.stringify(err));
-            }
-            else {
-                res.writeHead(200);
-                res.end(JSON.stringify(data));
-            }
-        });*/
     }
     else {
         var folder = rootFolder;
@@ -142,8 +129,8 @@ http.createServer(function (req, res) {
             var fileStat = fs.statSync(folder);
 
             if (fileStat.isFile()) {
-                res.writeHead(200);
-                res.write(fs.readFileSync(folder));
+                res.writeHead(500);
+                res.write("File can be downloaded with 'Download' request");
             }
             else {
                 var list = returnDirectory(folder);
@@ -167,32 +154,6 @@ function deleteZipTmp(path) {
         }
         else {
             console.log("tmp zip file " + path + " deleted");
-        }
-    });
-}
-
-function download(path, callback) {
-    fs.stat(path, (err, stats) => {
-        if (err) {
-            callback(err, null);
-        }
-        else {
-            try {
-                if (stats.isFile()) {
-                    var result = readFile(path);
-                    result['type'] = "file";
-                    callback(null, result);
-                }
-                else if (stats.isDirectory()) {
-                    // recursivly read all files and folders.
-                    // build tree hierarhy
-                    var result = readDir(path);
-                    result['type'] = "folder";
-                    callback(null, result);
-                }
-            } catch (err) {
-                callback(err, null);
-            }
         }
     });
 }
@@ -243,39 +204,4 @@ function getFilesAndFolders(folder) {
     }
 
     return {filesList:files, foldersList:folders};
-}
-
-function readFile(path) {
-    var result = {file:{}};
-    var data = fs.readFileSync(path);
-    result.file['path'] = pathModule.basename(path);
-    result.file['data'] = data;
-
-    return result;
-}
-
-function readDir(path) {
-    var result = {folder:{}};
-    var filesAndFolders = getFilesAndFolders(path);
-    result.folder['path'] = pathModule.basename(path);
-
-    filesAndFolders.filesList.forEach(
-        function(file) {
-            var fData = readFile(path + '/' + file);
-            if (!result.folder.files)
-                result.folder['files'] = [];
-            result.folder.files.push(fData);
-        }
-    );
-
-    filesAndFolders.foldersList.forEach(
-        function(folder) {
-            var fData = readDir(path + '/' + folder);
-            if (!result.folder.folders)
-                result.folder['folders'] = [];
-            result.folder.folders.push(fData);
-        }
-    );
-
-    return result;
 }
