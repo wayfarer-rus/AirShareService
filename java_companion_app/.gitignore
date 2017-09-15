@@ -22,3 +22,5 @@ workspace.xml
 build/
 !**/src/**/build
 !**/test/**/build
+*.class
+/target

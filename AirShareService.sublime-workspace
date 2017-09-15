@@ -1,0 +1,418 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"ca",
+				"cacheDir"
+			],
+			[
+				"conte",
+				"content"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"contents": "  onCreateView  ",
+			"settings":
+			{
+				"buffer_size": 16,
+				"line_ending": "Unix",
+				"name": "𝌆 Outline",
+				"scratch": true
+			}
+		},
+		{
+			"contents": "\"use strict\"\n\n// Optional. You will see this name in eg. 'ps' or 'top' command\nprocess.title = 'node-airshare-server';\n\nvar http = require('http');\nvar url = require('url');\nvar fs = require('fs');\nvar pathModule = require('path');\nvar formidable = require('formidable');\nvar unzipModule = require('unzip-stream');\nvar zipFolder = require('zip-folder');\n//var events = require('events');\n//var eventEmitter = new events.EventEmitter();\n\n//Assign the event handler to an event:\n//eventEmitter.on('close', deleteZipTmp);\n\nvar rootFolder = \"/Users/wayfarer\";\nvar tmpZipFolder = \"/Users/wayfarer/tmp/\";\nvar skipHidden = true;\n\nhttp.createServer(function (req, res) {\n    var q = url.parse(req.url, true);\n    console.log(q.pathname);\n\n    if (q.pathname == '/favicon.ico') {\n        res.writeHead(404);\n        res.end();\n    }\n    else if (q.pathname == '/__upload__' && req.method.toLowerCase() == 'post') {\n        var form = new formidable.IncomingForm();\n        form.parse(req, function (err, fields, files) {\n            if (err) {\n                console.log(err);\n                res.writeHead(500);\n                res.write(JSON.stringify(err));\n                res.end();\n            }\n            else {\n                var wherePath = decodeURI(q.query.path);\n\n                if (wherePath[0] != '/') wherePath = '/'+wherePath;\n                if (wherePath[wherePath.length-1]) wherePath += '/';\n                var unzip = q.query.unzip;\n\n                for (var key in files) {\n                    console.log(\"----\");\n                    console.log(\"key = \" + key);\n                    console.log(\"file = \" + JSON.stringify(files[key]));\n                    console.log(\"file path = \" + files[key].path);\n                    console.log(\"file name = \" + files[key].name);\n                    var oldpath = files[key].path;\n                    var newpath = rootFolder + wherePath + files[key].name;\n                    console.log(\"new path = \" + newpath);\n\n                    fs.rename(oldpath, newpath, function (err) {\n                        if (err) {\n                            res.writeHead(500);\n                            res.end(JSON.stringify(err));\n                        }\n                        else if (unzip) {\n                            fs.createReadStream(newpath)\n                                .pipe(unzipModule.Extract({ path: pathModule.dirname(newpath) }))\n                                .on('close',  function() {\n                                    deleteZipTmp(newpath);\n                                });\n                        }\n                    });\n                }\n\n                res.writeHead(200);\n                res.write('File uploaded and moved!');\n                res.end();\n                //console.log(files.filetoupload.path);\n                //console.log(files.filetoupload.name);\n                //console.log(JSON.stringify(files));\n            }\n        });\n    }\n    else if (q.pathname == '/__download__') {\n        var path = decodeURI(q.query.path);\n        console.log('Download : ' + path);\n\n        if (path)\n            path = rootFolder + path;\n\n        fs.stat(path, (err, stats) => {\n            if (err) {\n                res.writeHead(500);\n                res.end();\n            } else {\n                if (stats.isFile()) {\n                    res.writeHeader(200,\n                        {\"Content-Length\":stats.size, \n                        \"Content-Type\": \"file\",\n                        \"File-Name\" : pathModule.basename(path)\n                    });\n                    var fReadStream = fs.createReadStream(path);\n                    fReadStream.pipe(res);\n                } else if (stats.isDirectory()) {\n                    var zipTmpFile = tmpZipFolder + \"data_\" + Date.now() + \".zip\";\n\n                    zipFolder(path, zipTmpFile, function(err) {\n                        if(err) {\n                            console.log('Zip folder failed!', err);\n                            res.writeHead(500);\n                            res.end();\n                        } else {\n                            var fReadStream = fs.createReadStream(zipTmpFile);\n                            res.writeHeader(200, \n                                {\"Content-Type\" : \"folder\",\n                                \"File-Name\" : pathModule.basename(zipTmpFile),\n                                \"Folder-Name\" : pathModule.basename(path)\n                            });\n                            fReadStream.pipe(res).on('finish', function() { deleteZipTmp(zipTmpFile);} );\n                        }\n                    });\n                }\n            }\n        });\n    }\n    else {\n        var folder = rootFolder;\n\n        if (req.url !== '/') folder = folder + decodeURI(req.url);\n\n        console.log(\"trying to open folder: \" + folder);\n\n        try {\n            var fileStat = fs.statSync(folder);\n\n            if (fileStat.isFile()) {\n                res.writeHead(200);\n                res.write(fs.readFileSync(folder));\n            }\n            else {\n                var list = returnDirectory(folder);\n                console.log(list);\n                res.writeHead(200, {'Content-Type': 'text/json'});\n\n                if (list) res.write(list);\n            }\n        } catch (any) {\n            res.writeHead(404);\n        }\n\n        res.end();\n    }\n}).listen(8080);\n\nfunction deleteZipTmp(path) {\n    fs.unlink(path, (err) => {\n        if (err) {\n            console.log(err);\n        }\n        else {\n            console.log(\"tmp zip file \" + path + \" deleted\");\n        }\n    });\n}\n\nfunction returnDirectory(folder) {\n    var result = {folders: [], files:[]};\n    var filesAndFolders = getFilesAndFolders(folder);\n\n    if (folder != rootFolder) result.folders.push('..');\n\n    filesAndFolders.foldersList.forEach(\n        function(elem) {\n            result.folders.push(elem);\n        }\n    );\n\n    filesAndFolders.filesList.forEach(\n        function(elem) {\n            result.files.push(elem);\n        }\n    );\n\n    return JSON.stringify(result);\n}\n\nfunction getFilesAndFolders(folder) {\n    var files = [];\n    var folders = [];\n    var allFiles = fs.readdirSync(folder);\n\n    for (var i = 0; i < allFiles.length; ++i) {\n        var file = allFiles[i];\n\n        if (file[0] === '.' && skipHidden) {\n            continue;\n        }\n        else {\n            var filePath = folder + '/' + file;\n            var fileStat = fs.statSync(filePath);\n\n            if (fileStat.isFile()) {\n                files.push(file);\n            }\n            else if (fileStat.isDirectory()) {\n                folders.push(file);\n            }\n        }\n    }\n\n    return {filesList:files, foldersList:folders};\n}\n\n///// Deprecated\nfunction download(path, callback) {\n    fs.stat(path, (err, stats) => {\n        if (err) {\n            callback(err, null);\n        }\n        else {\n            try {\n                if (stats.isFile()) {\n                    var result = readFile(path);\n                    result['type'] = \"file\";\n                    callback(null, result);\n                }\n                else if (stats.isDirectory()) {\n                    // recursivly read all files and folders.\n                    // build tree hierarhy\n                    var result = readDir(path);\n                    result['type'] = \"folder\";\n                    callback(null, result);\n                }\n            } catch (err) {\n                callback(err, null);\n            }\n        }\n    });\n}\n\nfunction readFile(path) {\n    var result = {file:{}};\n    var data = fs.readFileSync(path);\n    result.file['path'] = pathModule.basename(path);\n    result.file['data'] = data;\n\n    return result;\n}\n\nfunction readDir(path) {\n    var result = {folder:{}};\n    var filesAndFolders = getFilesAndFolders(path);\n    result.folder['path'] = pathModule.basename(path);\n\n    filesAndFolders.filesList.forEach(\n        function(file) {\n            var fData = readFile(path + '/' + file);\n            if (!result.folder.files)\n                result.folder['files'] = [];\n            result.folder.files.push(fData);\n        }\n    );\n\n    filesAndFolders.foldersList.forEach(\n        function(folder) {\n            var fData = readDir(path + '/' + folder);\n            if (!result.folder.folders)\n                result.folder['folders'] = [];\n            result.folder.folders.push(fData);\n        }\n    );\n\n    return result;\n}\n",
+			"file": "air-share-server.js",
+			"file_size": 8700,
+			"file_write_time": 131499308570000000,
+			"settings":
+			{
+				"buffer_size": 8420,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "package wayfarer.airshare.companion\n\nimport android.os.Bundle\nimport android.support.v4.app.Fragment\nimport android.support.v4.app.ListFragment\nimport android.support.v4.content.res.ResourcesCompat\nimport android.util.Log\nimport android.view.LayoutInflater\nimport android.view.View\nimport android.view.ViewGroup\nimport android.widget.Button\nimport khttp.extensions.fileLike\nimport khttp.responses.Response\nimport org.jetbrains.anko.doAsync\nimport org.jetbrains.anko.support.v4.toast\nimport org.jetbrains.anko.uiThread\nimport org.json.JSONArray\nimport org.json.JSONException\nimport org.json.JSONObject\nimport java.io.File\nimport kotlin.collections.set\n\n/**\n * Created by wayfarer on 07/09/2017.\n */\n\nclass FileExplorerControlsFragment : Fragment() {\n\n    override fun onCreateView(inflater: LayoutInflater?, container: ViewGroup?, savedInstanceState: Bundle?): View? {\n        val rootView = inflater!!.inflate(R.layout.fragment_file_explorer_controls, container, false)\n        rootView.findViewById<View>(R.id.unselectAll)\n                .setOnClickListener { onUnselectAll() }\n\n        rootView.findViewById<View>(R.id.selectAll)\n                .setOnClickListener { onSelectAll() }\n\n        rootView.findViewById<View>(R.id.sendToRemote)\n                .setOnClickListener { onSend() }\n\n        if (this.parentFragment is RemoteFileExplorerFragment) {\n            val v = rootView.findViewById<Button>(R.id.sendToRemote)\n            v.setText(R.string.remote_controls_button_download)\n        }\n\n        return rootView\n    }\n\n    private fun onSelectAll() {\n        val f = this.parentFragment as ListFragment\n\n        when (f) {\n            is LocalFileExplorerFragment -> Log.d(TAG, \"Select All pressed on Local View\")\n            is RemoteFileExplorerFragment -> Log.d(TAG, \"Select All pressed on Remote View\")\n            else -> Log.d(TAG, \"Select All pressed on \" + f.toString())\n        }\n\n        val count = f.listView.count\n        Log.d(TAG, \"count is \" + count)\n        setSelection(f, count, true)\n    }\n\n    private fun setSelection(f: ListFragment, count: Int, selection: Boolean) {\n        for (i in 0 until count) {\n            val item = f.listView.getItemAtPosition(i) as Item\n\n            if (item.type == Item.Type.UP)\n                continue\n\n            item.isSelected = selection\n            val view = f.listView.getChildAt(i)\n\n            if (view != null) {\n                view.isSelected = selection\n                val c = ResourcesCompat.getColor(resources,\n                        if (selection) R.color.selectedItemColor else R.color.defaultItemColor, null)\n                view.setBackgroundColor(c)\n            }\n        }\n    }\n\n    private fun onUnselectAll() {\n        Log.d(TAG, \"Unselect All pressed\")\n        val f = this.parentFragment as ListFragment\n        setSelection(f, f.listView.count, false)\n    }\n\n    private fun onSend() {\n        Log.d(TAG, \"Send To Remote pressed\")\n        val f = this.parentFragment as ListFragment\n        val selectedItems = (0 until f.listView.count)\n                .map { f.listView.getItemAtPosition(it) as Item }\n                .filter { it.isSelected }\n\n        if (selectedItems.isEmpty())\n            return\n\n        if (f is LocalFileExplorerFragment) {\n            upload(selectedItems, f)\n        } else if (f is RemoteFileExplorerFragment) {\n            download(selectedItems, f)\n        }\n    }\n\n    private fun download(selectedItems: List<Item>, fragment: RemoteFileExplorerFragment) {\n        val state = FileExplorerState.instance\n        fragment.showProgressBar()\n        val cacheDir = context.cacheDir\n\n        doAsync {\n            selectedItems\n                    .map { (state.remotePath + \"/\" + it.file).replace(\"//+\".toRegex(), \"/\") }\n                    .forEach {\n                        val r = khttp.get(state.remoteUrlForDownload!!, params = mapOf(\"path\" to it))\n\n                        if (failResponse(r)) {\n                            uiThread {\n                                fragment.hideProgressBar()\n                                toast(\"Download failed. Check connection.\")\n                            }\n\n                            return@doAsync\n                        }\n                        else {\n                            saveTo(state.path.toString(), r.headers, r.content, cacheDir)\n                        }\n                    }\n\n            uiThread {\n                fragment.hideProgressBar()\n                fragment.parentActivity.loadLocalFileList()\n            }\n        }\n    }\n\n    private fun failResponse(r: Response): Boolean {\n        if (r.statusCode != 200) {\n            Log.d(TAG, \"Response code: \" + r.statusCode)\n            Log.d(TAG, \"Check server logs\")\n            return true\n        }\n\n        return false\n    }\n\n    @Throws(JSONException::class)\n    private fun saveTo(path: String, headers: Map<String, String>, content: ByteArray, cacheDir: String) {\n        when (headers[\"Content-Type\"]) {\n            \"file\" -> {\n                val file = AirShareFile(headers[\"File-Name\"]!!, content)\n                file.writeTo(path)\n            }\n            \"folder\" -> {\n\n                val zipFile = AirShareFile(headers[\"File-Name\"]!!, content)\n                val f = zipFile.writeTo(cacheDir + \"/\")\n                ZipFileUtil.unzip(f!!, path + \"/\" + headers[\"Folder-Name\"])\n                f.delete()\n            }\n        }\n/*\n        val iter = json.keys()\n\n        while (iter.hasNext()) {\n            val key = iter.next()\n\n            when (key) {\n                \"file\" -> {\n                    val fileName = json.getJSONObject(\"file\").getString(\"path\")\n                    val fileData = json.getJSONObject(\"file\").getJSONObject(\"data\").getJSONArray(\"data\")\n                    val file = AirShareFile(fileName, fileData)\n                    file.toFile(path)\n\n                }\n                \"folder\" -> {\n                    val folder = json.getJSONObject(\"folder\")\n                    val folderPath = folder.getString(\"path\")\n                    val newPath = path + \"/\" + folderPath\n\n                    if (folder.has(\"folders\")) {\n                        saveToLoop(newPath, folder.getJSONArray(\"folders\"))\n                    }\n\n                    if (folder.has(\"files\")) {\n                        saveToLoop(newPath, folder.getJSONArray(\"files\"))\n                    }\n                }\n            }\n        }*/\n    }\n\n    @Throws(JSONException::class)\n    private fun saveToLoop(path: String, jsonArray: JSONArray) {\n        for (i in 0 until jsonArray.length())\n            saveTo(path, jsonArray.getJSONObject(i))\n    }\n\n    private fun upload(selectedItems: List<Item>, fragment: LocalFileExplorerFragment) {\n        val state = FileExplorerState.instance\n        fragment.showProgressBar()\n        val cacheDir = context.cacheDir\n\n        doAsync {\n            var sleepForUnzipTime = 0L\n\n            for (item in selectedItems) {\n                val wherePath = state.remotePath.replace(\"//+\".toRegex(), \"/\")\n                val whatPath = state.path.toString() + \"/\" + item.file\n                val params = mutableMapOf(\"path\" to wherePath)\n                val f:File\n\n                if (item.isFolder) {\n                    f = File.createTempFile(\"_date\", \"zip\", cacheDir)\n                    params[\"unzip\"] = \"true\"\n                    // zip it to file\n                    val before = System.currentTimeMillis()\n                    ZipFileUtil.zipDirectory(File(whatPath), f)\n                    sleepForUnzipTime += System.currentTimeMillis() - before\n                } else {\n                    f = File(whatPath)\n                }\n\n                val files = listOf(f.fileLike())\n                val r = khttp.post(state.remoteUrlForUpload!!, params = params, files = files)\n\n                if (failResponse(r)) {\n                    uiThread {\n                        fragment.hideProgressBar()\n                        toast(\"Upload failed. Check connection.\")\n                    }\n\n                    return@doAsync\n                }\n\n            }\n\n            Thread.sleep(sleepForUnzipTime)\n\n            uiThread {\n                fragment.hideProgressBar()\n                fragment.parentActivity.loadRemoteFileList()\n            }\n\n        }\n    }\n\n    companion object {\n        private val TAG = \"FEControls_Fragment\"\n    }\n\n}\n",
+			"file": "AirShareAndroidCompanion/app/src/main/java/wayfarer/airshare/companion/FileExplorerControlsFragment.kt",
+			"file_size": 7769,
+			"file_write_time": 131496367790000000,
+			"settings":
+			{
+				"buffer_size": 8355,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "AirShareAndroidCompanion/app/src/main/java/wayfarer/airshare/companion/AirShareFile.kt",
+			"settings":
+			{
+				"buffer_size": 762,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 392.0,
+		"last_filter": "file",
+		"selected_items":
+		[
+			[
+				"file",
+				"Browse Mode: FileBrowser Left, Outline Right"
+			],
+			[
+				"brow",
+				"Browse Mode: Outline (Left)"
+			],
+			[
+				"ou",
+				"Browse Mode: FileBrowser Left, Outline Right"
+			],
+			[
+				"theme",
+				"UI: Select Color Scheme"
+			],
+			[
+				"project",
+				"Project: Save As"
+			],
+			[
+				"browse",
+				"Browse Mode: Close sidebar(s)"
+			],
+			[
+				"bro",
+				"Browse Mode: Close sidebar(s)"
+			],
+			[
+				"outline",
+				"Browse Mode: Outline (Left)"
+			],
+			[
+				"files",
+				"Browse Mode: FileBrowser Top Right, Outline Bottom Right"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"packa",
+				"Package Control: Install Package"
+			],
+			[
+				"brosemode",
+				"Browse Mode: Outline (Left)"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"",
+				"Indentation: Convert to Spaces"
+			]
+		],
+		"width": 468.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/Users/wayfarer/workspace/GIT/AirShareService/air-share-server.js"
+	],
+	"find":
+	{
+		"height": 0.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 16,
+						"regions":
+						{
+						},
+						"selection":
+						[
+						],
+						"settings":
+						{
+							"current_file": "/Users/wayfarer/workspace/GIT/AirShareService/AirShareAndroidCompanion/app/src/main/java/wayfarer/airshare/companion/FileExplorerControlsFragment.kt",
+							"outline_rename_mode": false,
+							"symkeys":
+							[
+								[
+									767,
+									779
+								]
+							],
+							"symlist":
+							[
+								"  onCreateView  "
+							],
+							"syntax": "Packages/Outline/outline.hidden-tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				}
+			]
+		},
+		{
+			"selected": 1,
+			"sheets":
+			[
+				{
+					"buffer": 1,
+					"file": "air-share-server.js",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 8420,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								4654,
+								4654
+							]
+						],
+						"settings":
+						{
+							"rulers":
+							[
+								120
+							],
+							"syntax": "Packages/JavaScript/JavaScript.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1436.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "AirShareAndroidCompanion/app/src/main/java/wayfarer/airshare/companion/FileExplorerControlsFragment.kt",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 8355,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5465,
+								5465
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Java/Java.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 2100.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "AirShareAndroidCompanion/app/src/main/java/wayfarer/airshare/companion/AirShareFile.kt",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 762,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 0.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				2
+			],
+			[
+				1,
+				0,
+				3,
+				2
+			]
+		],
+		"cols":
+		[
+			0.0,
+			0.2,
+			0.8,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			0.5,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "AirShareService.sublime-project",
+	"replace":
+	{
+		"height": 0.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 1,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": false,
+	"side_bar_width": 150.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

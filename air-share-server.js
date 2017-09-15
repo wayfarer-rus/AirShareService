@@ -9,6 +9,7 @@ var fs = require('fs');
 var pathModule = require('path');
 var formidable = require('formidable');
 var unzipModule = require('unzip-stream');
+var zipFolder = require('zip-folder');
 //var events = require('events');
 //var eventEmitter = new events.EventEmitter();
 
@@ -16,6 +17,7 @@ var unzipModule = require('unzip-stream');
 //eventEmitter.on('close', deleteZipTmp);
 
 var rootFolder = "/Users/wayfarer";
+var tmpZipFolder = "/Users/wayfarer/tmp/";
 var skipHidden = true;
 
 http.createServer(function (req, res) {
@@ -83,7 +85,42 @@ http.createServer(function (req, res) {
         if (path)
             path = rootFolder + path;
 
-        download(path, function(err, data) {
+        fs.stat(path, (err, stats) => {
+            if (err) {
+                res.writeHead(500);
+                res.end();
+            } else {
+                if (stats.isFile()) {
+                    res.writeHeader(200,
+                        {"Content-Length":stats.size, 
+                        "Content-Type": "file",
+                        "File-Name" : pathModule.basename(path)
+                    });
+                    var fReadStream = fs.createReadStream(path);
+                    fReadStream.pipe(res);
+                } else if (stats.isDirectory()) {
+                    var zipTmpFile = tmpZipFolder + "data_" + Date.now() + ".zip";
+
+                    zipFolder(path, zipTmpFile, function(err) {
+                        if(err) {
+                            console.log('Zip folder failed!', err);
+                            res.writeHead(500);
+                            res.end();
+                        } else {
+                            var fReadStream = fs.createReadStream(zipTmpFile);
+                            res.writeHeader(200, 
+                                {"Content-Type" : "folder",
+                                "File-Name" : pathModule.basename(zipTmpFile),
+                                "Folder-Name" : pathModule.basename(path)
+                            });
+                            fReadStream.pipe(res).on('finish', function() { deleteZipTmp(zipTmpFile);} );
+                        }
+                    });
+                }
+            }
+        });
+
+        /*download(path, function(err, data) {
             if (err) {
                 res.writeHead(500);
                 res.end(JSON.stringify(err));
@@ -92,8 +129,7 @@ http.createServer(function (req, res) {
                 res.writeHead(200);
                 res.end(JSON.stringify(data));
             }
-        });
-        //fs.readFile(path, 'utf8', (err, data) => {});
+        });*/
     }
     else {
         var folder = rootFolder;

@@ -5,7 +5,6 @@ import khttp.get
 import khttp.post
 import khttp.responses.Response
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 
 val remoteUrl = "http://127.0.0.1:8080"
@@ -94,16 +93,32 @@ fun downloadFiles(cmd: List<String>) {
 
     if (failResponse(r)) return
 
-    saveTo(wherePath, r.jsonObject)
+    saveTo(wherePath, r.headers, r.content)
 }
 
-private fun saveTo(path: String, json: JSONObject) {
+private fun saveTo(path: String, headers: Map<String, String>, content: ByteArray) {
+    when (headers["Content-Type"]) {
+        "file" -> {
+            val file = AirShareFile(headers["File-Name"]!!, content)
+            file.writeTo(path)
+        }
+        "folder" -> {
+            println("Type is folder")
+            val zipFile = AirShareFile(headers["File-Name"]!!, content)
+            val f = zipFile.writeTo("./tmp/")
+            ZipFileUtil.unzip(f!!, "./tmp/" + headers["Folder-Name"])
+            f.delete()
+        }
+    }
+}
+
+/*private fun saveTo(path: String, json: JSONObject) {
     for (key in json.keys()) {
         when (key) {
             "file" -> {
-                val file = AirShareFile((json["file"] as JSONObject )["path"] as String,
-                        ((json["file"] as JSONObject)["data"] as JSONObject)["data"] as JSONArray)
-                file.toFile(path)
+//                val file = AirShareFile((json["file"] as JSONObject )["path"] as String,
+//                        ((json["file"] as JSONObject)["data"] as JSONObject)["data"] as JSONArray)
+//                file.writeTo(path)
             }
             "folder" -> {
                 val folderPath = (json[key] as JSONObject)["path"]
@@ -128,7 +143,7 @@ private fun saveToLoop(jsonArray: JSONArray, path: String) {
     for (item in jsonArray) {
         saveTo(path, item as JSONObject)
     }
-}
+}*/
 
 fun changeRemoteDirectory(cmd: List<String>) {
     when {

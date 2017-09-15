@@ -5,10 +5,33 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 
 
 object ZipFileUtil {
+    @JvmOverloads
+    fun unzip(zipFile: File, outPath: String? = "./") {
+        val f = ZipFile(zipFile)
+        File(outPath).mkdirs()
+
+        for (entry in f.entries()) {
+            val entryName = entry.name
+            val newPath = outPath + "/" + entryName
+            val entrySize = entry.size
+
+            if (entry.isDirectory) {
+                println("[$newPath)]")
+                File(newPath).mkdirs()
+            } else {
+                val zis = f.getInputStream(entry)
+                // write to file
+                val i = zis.copyTo(File(newPath).outputStream())
+                println("-- \"$newPath\" ($entrySize) = ($i)")
+            }
+        }
+    }
+
     @Throws(IOException::class)
     fun zipDirectory(dir: File, zipFile: File) {
         val fout = FileOutputStream(zipFile, false)
