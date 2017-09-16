@@ -11,7 +11,6 @@ import android.view.ViewGroup
 import android.widget.Button
 import khttp.extensions.fileLike
 import khttp.responses.Response
-import org.airshare.companion.AirShareFile
 import org.airshare.companion.ZipFileUtil
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.support.v4.toast
@@ -111,7 +110,7 @@ class FileExplorerControlsFragment : Fragment() {
             selectedItems
                     .map { (state.remotePath + "/" + it.file).replace("//+".toRegex(), "/") }
                     .forEachIndexed { i, s ->
-                        val r = khttp.get(state.remoteUrlForDownload!!, params = mapOf("path" to s))
+                        val r = khttp.get(state.remoteUrlForDownload!!, params = mapOf("path" to s), stream=true)
 
                         if (failResponse(r)) {
                             uiThread {
@@ -122,7 +121,9 @@ class FileExplorerControlsFragment : Fragment() {
                             return@doAsync
                         }
                         else {
-                            saveTo(state.path.toString(), r.headers, r.content, cacheDir.toString())
+                            val content = File.createTempFile("content", "tmp", cacheDir)
+                            r.raw.copyTo(content.outputStream())
+                            saveTo(state.path.toString(), r.headers, content, cacheDir.toString())
                         }
 
                         uiThread {
@@ -148,19 +149,19 @@ class FileExplorerControlsFragment : Fragment() {
     }
 
     @Throws(JSONException::class)
-    private fun saveTo(path: String, headers: Map<String, String>, content: ByteArray, cacheDir: String) {
+    private fun saveTo(path: String, headers: Map<String, String>, content: File, cacheDir: String) {
         when (headers["Content-Type"]) {
             "file" -> {
-                val file = AirShareFile(URLDecoder.decode(headers["File-Name"]!!, "UTF-8"), content)
-                file.writeTo(path)
+                val p = path + "/" + URLDecoder.decode(headers["File-Name"], "UTF-8")
+                val file = File(p)
+                content.copyTo(file, overwrite = true)
             }
             "folder" -> {
-                val zipFile = AirShareFile(URLDecoder.decode(headers["File-Name"]!!, "UTF-8"), content)
-                val f = zipFile.writeTo(cacheDir + "/")
-                ZipFileUtil.unzip(f!!, path + "/" + URLDecoder.decode(headers["Folder-Name"], "UTF-8"))
-                f.delete()
+                ZipFileUtil.unzip(content, path + "/" + URLDecoder.decode(headers["Folder-Name"], "UTF-8"))
             }
         }
+
+        content.delete()
     }
 
     private fun upload(selectedItems: List<Item>, fragment: LocalFileExplorerFragment) {
