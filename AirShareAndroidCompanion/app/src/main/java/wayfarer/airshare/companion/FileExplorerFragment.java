@@ -89,14 +89,14 @@ abstract class FileExplorerFragment extends ListFragment
     public void showProgressBar(int amountOfSelectedFiles) {
         Log.d(TAG, "showProgressBar!!!");
         progressText.setText("0/"+amountOfSelectedFiles);
-        MainActivity.animateView(progressOverlay, View.VISIBLE, 0.4f, 200);
+        MainActivity.Companion.animateView(progressOverlay, View.VISIBLE, 0.4f, 200);
         getActivity().getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
     }
 
     public void hideProgressBar() {
         Log.d(TAG, "hideProgressBar!!!");
-        MainActivity.animateView(progressOverlay, View.GONE, 0, 200);
+        MainActivity.Companion.animateView(progressOverlay, View.GONE, 0, 200);
         getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
     }
 
